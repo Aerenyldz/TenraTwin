@@ -1,7 +1,8 @@
-# 🎙️ TENRA — Kişisel AI Ses İkizi ve Akıllı Telefon Sekreteri
+# 🎙️ TENRA — Autonomous AI Voice Twin & Smart Phone Secretary
 
-> **Ahmet Eren Yıldız'ın Yapay Zeka Ses İkizi & Otonom Telefon Asistanı**  
-> NVIDIA GeForce RTX 5060 üzerinde yerel LLM (Ollama) ve Fish Audio ses klonlama teknolojisiyle çalışan; gelen aramaları otomatik yanıtlayan, arayan kişiyi rehberden tanıyan, diyalog kurup not alan ve özetleyen tam teşekküllü yapay zeka ekosistemi.
+> **English:** TENRA is an autonomous AI voice twin and intelligent phone secretary powered by local LLMs (Ollama Hermes 3 8B) on NVIDIA RTX GPUs and neural voice cloning. It automatically identifies callers from contacts, answers phone calls with dual-engine hardware simulation, conducts real-time natural conversations, takes smart notes, and seamlessly integrates with enterprise SIP/VoIP gateways.  
+>  
+> **Türkçe:** Ahmet Eren Yıldız'ın yapay zeka ses ikizi ve otonom telefon sekreteri. NVIDIA GeForce RTX 5060 üzerinde yerel LLM ve ses klonlama teknolojisiyle gelen aramaları otomatik yanıtlar, arayan kişiyi rehberden tanır, diyalog kurup not alır ve özetler.
 
 ---
 
