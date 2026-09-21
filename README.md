@@ -73,16 +73,46 @@ tenra/
 │   └── dist/               # Derlenmiş üretim web varlıkları
 ├── voice_twin/             # Ses İkizi ve Diyalog Motoru
 │   ├── call_agent.py       # Ollama diyalog ajanı ve akıllı özetleyici
-│   ├── tts_engine.py       # Fish Audio & Edge-TTS ses sentezleyici
+│   ├── tts_engine.py       # Fish Audio, ElevenLabs & Yerel RVC ses sentezleyici
+│   ├── rvc_bridge.py       # Yerel RVC v2 inference köprüsü (Applio entegrasyonu)
 │   ├── sip_gateway.py      # pyVoIP tabanlı SIP / Telefon Santrali motoru
 │   └── call_logs_db.py     # SQLite veritabanı CRUD operasyonları
-├── voice_dataset/          # Ahmet Eren ses örnekleri ve eğitim veri seti
-├── legacy/                 # Arşivlenen eski betikler ve modeller
+├── saas_engine/            # Dijital İkiz ve SaaS Otomasyon Motoru
+│   ├── saas_pipeline.py    # WhatsApp sohbet dökümünden LoRA veri seti & RAG anı çıkarıcı
+│   ├── export_lora_gguf.py # LoRA ağırlıklarını Ollama GGUF formatına dönüştürücü
+│   └── retrain_pipeline.py # 250 Epoch yerel model yeniden eğitim hattı
 ├── baslat_tenra.bat        # Sunucuyu otomatik restart ve healthcheck ile başlatan betik
 ├── derle_ve_yayinla.bat    # React derleme ve sunucu güncelleme betiği
 ├── call_logs.db            # Arama kayıtları, notlar ve asistan ayarları veritabanı
 └── README.md               # Proje dokümantasyonu
 ```
+
+---
+
+## 🗺️ SaaS Vizyonu & Yerel Ses İkizi Yol Haritası (Roadmap)
+
+> **Hedef:** Harici API maliyetlerine (Fish Audio, ElevenLabs) bağımlı kalmadan; tamamen yerel GPU (RTX 5060) ve bulut konteynerleri üzerinde çalışan, sıfır marjinal maliyetli bağımsız bir SaaS ekosistemi inşa etmek.
+
+### 📌 Faz 1: Hibrit MVP (Şu Anki Durum - Aktif)
+- **Hızlı Prototip & Doğrulama:** Fish Audio API + Ollama `hermes3:8b` + Web Speech API + Android Dual-Engine Call Receiver.
+- **Kişiye Özel Yanıt:** 9 hazır durum modu + Serbest Özel Not analizi.
+- **Çağrı Santrali:** pyVoIP SIP Gateway ve Bulut Webhook altyapısı.
+
+### 📌 Faz 2: Tamamen Yerel ve Bağımsız RVC Motoruna Geçiş
+- **Sıfır API Bağımlılığı:** Harici TTS servisleri yerine, `C:\Applio\assets\weights\ahmet_eren_v2.pth` ve Faiss `.index` ağırlıklarının `rvc_bridge.py` üzerinden devreye alınması.
+- **Maliyet Avantajı:** Karakter ve dakika başına API ücreti ödemeden, RTX 5060 donanımında sınırsız yerel ses sentezi.
+- **Ultra Düşük Gecikme:** Yerel inference ile internet dalgalanmalarından etkilenmeyen diyalog akışı.
+
+### 📌 Faz 3: Otomatik SaaS Klonlama Motoru (`saas_engine/`)
+- **Tek Tıkla Dijital İkiz:** `saas_pipeline.py` kullanılarak müşterilerin WhatsApp sohbet yedeklerinden (`.txt`) ve 3 dakikalık ses kaydından:
+  1. Kişilik & tonlama analizi yapılması,
+  2. Soru-cevap LoRA eğitim veri setinin otomatik çıkarılması,
+  3. Kişiye özel Ollama Modelfile ve RAG hafıza dosyasının üretilmesi,
+  4. 5 dakika içinde müşteriye özel telefon sekreteri ve ses ikizinin ayağa kaldırılması.
+
+### 📌 Faz 4: Kurumsal Model Depolama ve Mimari
+- **Büyük Veri & Model Ayrımı:** Gigabaytlarca eğitim verisi (`master_veriseti.jsonl`) ve model ağırlıkları (`.pth`, `.gguf`) Git reposunu şişirmemek ve gizliliği korumak için S3 / Cloudflare R2 / Hugging Face Private Hub üzerinde barındırılır.
+- **Hafif ve Dağıtılabilir Repo:** Git reposunda sadece saf mühendislik kodları ve boru hatları (pipeline) tutulur; yeni sunuculara saniyeler içinde `git clone` ile dağıtım yapılır.
 
 ---
 
