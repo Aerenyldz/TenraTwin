@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>TENRA Voice Twin</title>
+  
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="/app/manifest.json">
+  <meta name="theme-color" content="#070b14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TENRA">
+  <link rel="apple-touch-icon" href="/app/icon.svg">
+  <link rel="icon" type="image/svg+xml" href="/app/icon.svg">
+  
+  <link rel="stylesheet" href="/app/style.css?t=1726949000">
+  <script>
+    // Force purge Service Workers & Caches on startup
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        for (let r of regs) r.unregister();
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(function(names) {
+        for (let n of names) caches.delete(n);
+      });
+    }
+    window.onerror = function(msg, url, lineNo) {
+      var b = document.getElementById('debug-err-box');
+      if (b) {
+        b.style.display = 'block';
+        b.textContent = 'Hata: ' + msg + ' (' + (url ? url.split('/').pop() : '') + ':' + lineNo + ')';
+      }
+    };
+  </script>
+</head>
+<body>
+  <div id="debug-err-box" style="display:none; background:#dc2626; color:#fff; padding:8px 12px; font-size:0.8rem; text-align:center; font-weight:600; position:sticky; top:0; z-index:9999;"></div>
+
+  <!-- Top Bar -->
+  <header>
+    <div class="brand">
+      <div class="logo-badge">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round">
+          <path d="M12 2v20M17 5v14M7 9v6M22 12h-2M4 12H2"></path>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">TENRA TWIN</div>
+        <div class="brand-sub">Ahmet Eren Asistanı</div>
+      </div>
+    </div>
+    <div class="server-pill">
+      <div class="dot-live"></div>
+      <span id="header-status-text">Sunucu Aktif</span>
+    </div>
+  </header>
+
+  <!-- Quick Status Selector -->
+  <section class="status-widget">
+    <div class="status-label">Asistan Çağrı Modu</div>
+    <div class="status-pills">
+      <button class="status-btn active" data-status="Okulda" onclick="setStatus('Okulda')">
+        <span style="font-size: 1.2rem;">🎓</span>
+        <span>Okulda</span>
+      </button>
+      <button class="status-btn" data-status="Sporda" onclick="setStatus('Sporda')">
+        <span style="font-size: 1.2rem;">🏋️‍♂️</span>
+        <span>Sporda</span>
+      </button>
+      <button class="status-btn" data-status="Toplantıda" onclick="setStatus('Toplantıda')">
+        <span style="font-size: 1.2rem;">💼</span>
+        <span>Toplantı</span>
+      </button>
+      <button class="status-btn" data-status="Müsait" onclick="setStatus('Müsait')">
+        <span style="font-size: 1.2rem;">🟢</span>
+        <span>Müsait</span>
+      </button>
+    </div>
+    <div id="current-status-hint" class="status-current-hint">
+      ⚡ Aktif Cevap: "Ahmet şu an derste, önemli bir şey varsa not alıyorum."
+    </div>
+  </section>
+
+  <!-- Main Views / Tabs -->
+
+  <!-- Tab 1: Two-Way Live Interactive Call -->
+  <main id="tab-live-call" class="tab-content active">
+    <div class="call-ctrl-bar">
+      <div class="caller-input-wrap">
+        <label>Arayan Kişi Adı</label>
+        <input type="text" id="live-caller-name" value="Yunus Berk" placeholder="Örn: Yunus Berk">
+      </div>
+      <button id="btn-toggle-call" class="btn-call-start" onclick="toggleLiveCall()">
+        <span id="call-btn-icon">📞</span>
+        <span id="call-btn-text">Aramayı Başlat</span>
+      </button>
+    </div>
+
+    <!-- Active Dialogue Scroll Container -->
+    <div id="live-dialogue-container" class="dialogue-container">
+      <div id="call-empty-placeholder" class="call-empty-state">
+        <div style="font-size: 3rem; margin-bottom: 10px;">📞</div>
+        <h3 style="margin-bottom: 8px;">İki Taraflı Canlı Görüşme</h3>
+        <p>Yukarıdan <strong>"Aramayı Başlat"</strong> butonuna basarak Ahmet'in yapay zeka ikiziyle canlı telefon görüşmesine başlayabilirsiniz.</p>
+        <p style="margin-top: 10px; font-size: 0.82rem; color: var(--accent-cyan);">
+          Konuştuğunuzda veya yazdığınızda Ahmet Eren kendi ses klonuyla (Genç Ahmet) anında sesli cevap verir. Görüşmeyi bitirdiğinizde özet <strong>"Çağrılar"</strong> sekmesine otomatik kaydedilir.
+        </p>
+      </div>
+    </div>
+
+    <!-- Live Chat & Speech Input Area -->
+    <div id="live-input-area" class="live-input-bar" style="display: none;">
+      <button id="btn-live-mic" class="mic-btn" onclick="toggleVoiceInput()" title="Mikrofon ile Konuş">
+        <span id="mic-icon">🎙️</span>
+      </button>
+      <input type="text" id="live-user-input" class="chat-input" placeholder="Konuş veya mesajını yaz..." onkeydown="handleInputKey(event)">
+      <button id="btn-live-send" class="send-btn" onclick="sendLiveMessage()" title="Gönder">
+        <span>➤</span>
+      </button>
+    </div>
+  </main>
+
+  <!-- Tab 2: Calls & Voice Notes -->
+  <section id="tab-calls" class="tab-content">
+    <div class="section-header">
+      <div class="section-title">Gelen Çağrılar & Notlar</div>
+      <button class="refresh-btn" onclick="loadCalls()">↻ Yenile</button>
+    </div>
+    <div id="calls-list">
+      <!-- Call cards rendered here by app.js -->
+      <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+        Yükleniyor...
+      </div>
+    </div>
+  </section>
+
+  <!-- Tab 3: Voice Test & Synthesis -->
+  <section id="tab-voice" class="tab-content">
+    <div class="section-header">
+      <div class="section-title">Anlık Ses Sentez Testi</div>
+    </div>
+
+    <div class="voice-test-card">
+      <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 10px;">
+        Hızlı Seçenekler:
+      </div>
+      <div class="prompt-chips">
+        <div class="chip" onclick="setTestPrompt('Selam kanka, naber? Ben Ahmet Eren.')">👋 Selam kanka</div>
+        <div class="chip" onclick="setTestPrompt('Şu an dersteyim, saat sekizde spora gideriz.')">📚 Dersteyim</div>
+        <div class="chip" onclick="setTestPrompt('Spordayım, acil bir şey varsa söyle hemen halledeyim.')">🏋️‍♂️ Spordayım</div>
+        <div class="chip" onclick="setTestPrompt('Eve geçince bilgisayardan bakacağım, 15 dakika sonra ararım.')">💻 Bilgisayar</div>
+      </div>
+
+      <textarea id="test-text" class="test-input" placeholder="Konuşmasını istediğiniz metni yazın...">Selam kanka, ben Ahmet'in dijital ikiziyim. Ahmet şu an derste.</textarea>
+
+      <button id="btn-synthesize" class="action-btn" onclick="runVoiceTest()">
+        <span>🔊</span> Sentezle & Dinle
+      </button>
+
+      <div style="margin-top: 16px;">
+        <audio id="test-audio-player" controls style="display: none; width: 100%;"></audio>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tab 4: System & Hardware -->
+  <section id="tab-system" class="tab-content">
+    <div class="section-header">
+      <div class="section-title">Sunucu & Motor Durumu</div>
+    </div>
+
+    <div class="info-card" id="system-info-body">
+      <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+        Sistem bilgileri alınıyor...
+      </div>
+    </div>
+  </section>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-tab="tab-live-call">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+      </svg>
+      <span>Canlı Arama</span>
+    </button>
+    <button class="nav-item" data-tab="tab-calls">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <span>Çağrılar</span>
+    </button>
+    <button class="nav-item" data-tab="tab-voice">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+        <line x1="12" y1="19" x2="12" y2="23"></line>
+        <line x1="8" y1="23" x2="16" y2="23"></line>
+      </svg>
+      <span>Ses Testi</span>
+    </button>
+    <button class="nav-item" data-tab="tab-system">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+        <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+        <line x1="6" y1="6" x2="6.01" y2="6"></line>
+        <line x1="6" y1="18" x2="6.01" y2="18"></line>
+      </svg>
+      <span>Sunucu</span>
+    </button>
+  </nav>
+
+  <script src="/app/app.js?t=1726949000"></script>
+</body>
+</html>

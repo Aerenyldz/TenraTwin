@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TENRA</string>
+    <string name="title_activity_main">TENRA</string>
+    <string name="package_name">ai.tenra.app</string>
+    <string name="custom_url_scheme">ai.tenra.app</string>
+</resources>

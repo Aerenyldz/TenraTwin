@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  tenra-server:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    container_name: tenra-voice-server
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - CALL_MODEL=hermes3:8b
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ../call_logs.db:/app/call_logs.db
+      - ../call_recordings:/app/call_recordings
+      - ../voice_twin/cache:/app/voice_twin/cache
+      - C:/Applio:/app/Applio:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  default:
+    name: tenra-network

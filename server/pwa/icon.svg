@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <linearGradient id="wave" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#818cf8" />
+      <stop offset="100%" stop-color="#c084fc" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#bg)" />
+  <!-- Outer Glow Circle -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#38bdf8" stroke-width="6" opacity="0.25" />
+  <!-- Sound Wave Bars -->
+  <rect x="136" y="216" width="24" height="80" rx="12" fill="url(#wave)" />
+  <rect x="184" y="160" width="24" height="192" rx="12" fill="url(#wave)" />
+  <rect x="232" y="112" width="24" height="288" rx="12" fill="url(#wave)" />
+  <rect x="280" y="144" width="24" height="224" rx="12" fill="url(#wave)" />
+  <rect x="328" y="192" width="24" height="128" rx="12" fill="url(#wave)" />
+  <!-- Headphone or AI Accent dot -->
+  <circle cx="256" cy="72" r="14" fill="#38bdf8" />
+</svg>
