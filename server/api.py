@@ -67,12 +67,33 @@ if os.path.exists(REACT_DIST):
 app.mount("/app", StaticFiles(directory=PWA_DIR, html=True), name="pwa")
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def root():
     """Redirect root to the modern React Mobile interface if built, else fallback PWA."""
     if os.path.exists(REACT_DIST):
         return RedirectResponse(url="/mobile/")
     return RedirectResponse(url="/app/")
+
+
+@app.api_route("/health", methods=["GET", "HEAD"])
+def health():
+    """Cloudflare, Uptime robot ve monitörler için sağlık kontrolü."""
+    return {"status": "ok", "server": "TenraTwin"}
+
+
+@app.api_route("/apk", methods=["GET", "HEAD"])
+def download_apk():
+    """Telefondan doğrudan güncel Android APK'sını indirme bağlantısı."""
+    apk_path = os.path.join(PROJECT_ROOT, "app-debug.apk")
+    if not os.path.exists(apk_path):
+        apk_path = os.path.join(PROJECT_ROOT, "tenra-mobile", "android", "app", "build", "outputs", "apk", "debug", "app-debug.apk")
+    if not os.path.exists(apk_path):
+        raise HTTPException(status_code=404, detail="APK dosyası bulunamadı.")
+    return FileResponse(
+        apk_path,
+        media_type="application/vnd.android.package-archive",
+        filename="TenraTwin.apk"
+    )
 
 
 # --- Data Models ---
@@ -184,18 +205,25 @@ async def handle_gsm_incoming(payload: GSMIncomingRequest):
         urgency="normal"
     )
 
-    # Ses dosyasını üret
+    # Ses dosyasını üret veya önbellekten anında al (0ms gecikme)
+    import hashlib
+    greet_hash = hashlib.md5(greeting.encode('utf-8')).hexdigest()[:10]
     cache_dir = os.path.join(PROJECT_ROOT, "voice_twin", "cache")
     os.makedirs(cache_dir, exist_ok=True)
-    audio_filename = f"gsm_greet_{uuid.uuid4().hex[:8]}.wav"
+    audio_filename = f"gsm_greet_{greet_hash}.wav"
     audio_path = os.path.join(cache_dir, audio_filename)
     audio_url = None
-    try:
-        await synthesize_speech_async(greeting, audio_path)
-        if os.path.exists(audio_path):
-            audio_url = f"/api/cache/{audio_filename}"
-    except Exception as e:
-        print(f"[GSM Ses Sentez Hatası]: {e}")
+
+    if os.path.exists(audio_path) and os.path.getsize(audio_path) > 1000:
+        audio_url = f"/api/cache/{audio_filename}"
+        print(f"[GSM INCOMING] Önbellekten anında ses getirildi (0ms): {audio_filename}")
+    else:
+        try:
+            await synthesize_speech_async(greeting, audio_path)
+            if os.path.exists(audio_path):
+                audio_url = f"/api/cache/{audio_filename}"
+        except Exception as e:
+            print(f"[GSM Ses Sentez Hatası]: {e}")
 
     print(f"[GSM INCOMING] Arama yakalandı ve DB'ye işlendi: {caller_id_text} (ID: #{call_id})")
     return {

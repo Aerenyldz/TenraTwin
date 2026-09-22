@@ -87,6 +87,7 @@ legacy/tenra_lora.gguf
 credentials.json
 
 # IDE & OS
+*.tmp
 .idea/
 .vscode/
 *.swp

@@ -9,6 +9,9 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import com.getcapacitor.BridgeActivity;
 
 import java.util.ArrayList;
@@ -21,7 +24,15 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        requestRequiredPermissions();
+        
+        // Pencere ve WebView tamamen oluştuktan sonra izinleri güvenle iste
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            try {
+                requestRequiredPermissions();
+            } catch (Exception e) {
+                Log.e(TAG, "İzin isteme hatası: " + e.getMessage(), e);
+            }
+        }, 500);
     }
 
     /**

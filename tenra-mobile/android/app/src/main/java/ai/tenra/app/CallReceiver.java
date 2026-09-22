@@ -213,63 +213,86 @@ public class CallReceiver extends BroadcastReceiver {
 
     private void notifyTenraServerAndPlay(Context context, String number, String name) {
         new Thread(() -> {
-            try {
-                SharedPreferences prefs = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
-                String serverUrl = prefs.getString("server_url", "");
-                if (serverUrl == null || serverUrl.trim().isEmpty()) {
-                    serverUrl = prefs.getString("tenra_server_url", "http://100.93.198.21:8008");
-                }
+            SharedPreferences prefs = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
+            String customUrl = prefs.getString("server_url", prefs.getString("tenra_server_url", ""));
+            
+            java.util.List<String> candidateUrls = new java.util.ArrayList<>();
+            if (customUrl != null && !customUrl.trim().isEmpty()) {
+                candidateUrls.add(customUrl.trim());
+            }
+            candidateUrls.add("http://192.168.1.100:8008");
+            candidateUrls.add("http://100.93.198.21:8008");
+
+            for (String serverUrl : candidateUrls) {
                 if (!serverUrl.endsWith("/")) serverUrl += "/";
+                try {
+                    Log.d(TAG, "Sunucuya bağlanılıyor: " + serverUrl);
+                    URL url = new URL(serverUrl + "api/gsm/incoming");
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("POST");
+                    conn.setRequestProperty("Content-Type", "application/json; utf-8");
+                    conn.setRequestProperty("Accept", "application/json");
+                    conn.setDoOutput(true);
+                    conn.setConnectTimeout(3000);
+                    conn.setReadTimeout(12000);
 
-                URL url = new URL(serverUrl + "api/gsm/incoming");
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json; utf-8");
-                conn.setRequestProperty("Accept", "application/json");
-                conn.setDoOutput(true);
-                conn.setConnectTimeout(8000);
-                conn.setReadTimeout(12000);
+                    JSONObject json = new JSONObject();
+                    json.put("caller_name", name);
+                    json.put("caller_number", number);
+                    json.put("action", "auto_answered");
 
-                JSONObject json = new JSONObject();
-                json.put("caller_name", name);
-                json.put("caller_number", number);
-                json.put("action", "auto_answered");
-
-                try (OutputStream os = conn.getOutputStream()) {
-                    byte[] input = json.toString().getBytes("utf-8");
-                    os.write(input, 0, input.length);
-                }
-
-                int code = conn.getResponseCode();
-                Log.d(TAG, "TENRA Sunucu bildirimi yapıldı. HTTP Durum: " + code);
-
-                if (code == 200) {
-                    BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "utf-8"));
-                    StringBuilder response = new StringBuilder();
-                    String responseLine;
-                    while ((responseLine = br.readLine()) != null) {
-                        response.append(responseLine.trim());
+                    try (OutputStream os = conn.getOutputStream()) {
+                        byte[] input = json.toString().getBytes("utf-8");
+                        os.write(input, 0, input.length);
                     }
-                    br.close();
 
-                    JSONObject resJson = new JSONObject(response.toString());
-                    String audioUrl = resJson.optString("audio_url", "");
-                    if (!audioUrl.isEmpty()) {
-                        String fullAudioUrl = audioUrl.startsWith("http") ? audioUrl : serverUrl + audioUrl.replaceFirst("^/", "");
-                        Log.d(TAG, "Selamlama sesi çalınıyor: " + fullAudioUrl);
-                        playAudioStream(fullAudioUrl);
+                    int code = conn.getResponseCode();
+                    Log.d(TAG, "TENRA Sunucu bildirimi yapıldı (" + serverUrl + "). Durum: " + code);
+
+                    if (code == 200) {
+                        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "utf-8"));
+                        StringBuilder response = new StringBuilder();
+                        String responseLine;
+                        while ((responseLine = br.readLine()) != null) {
+                            response.append(responseLine.trim());
+                        }
+                        br.close();
+
+                        JSONObject resJson = new JSONObject(response.toString());
+                        String audioUrl = resJson.optString("audio_url", "");
+                        if (!audioUrl.isEmpty()) {
+                            String fullAudioUrl = audioUrl.startsWith("http") ? audioUrl : serverUrl + audioUrl.replaceFirst("^/", "");
+                            Log.d(TAG, "Selamlama sesi çalınıyor: " + fullAudioUrl);
+                            playAudioStream(context, fullAudioUrl);
+                            conn.disconnect();
+                            break; // Başarılı, diğer adresleri denemeye gerek yok
+                        }
                     }
+                    conn.disconnect();
+                } catch (Exception e) {
+                    Log.w(TAG, "Sunucu denemesi (" + serverUrl + ") başarısız: " + e.getMessage());
                 }
-                conn.disconnect();
-            } catch (Exception e) {
-                Log.w(TAG, "Sunucu bildirimi hatası: " + e.getMessage());
             }
         }).start();
     }
 
-    private synchronized void playAudioStream(String audioUrl) {
+    private synchronized void playAudioStream(Context context, String audioUrl) {
         try {
             stopAudio();
+
+            // Hoparlör ve ses seviyelerini en yükseğe al
+            try {
+                AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+                if (am != null) {
+                    am.setMode(AudioManager.MODE_IN_CALL);
+                    am.setSpeakerphoneOn(true);
+                    int maxVoice = am.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL);
+                    am.setStreamVolume(AudioManager.STREAM_VOICE_CALL, maxVoice, 0);
+                    int maxMusic = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+                    am.setStreamVolume(AudioManager.STREAM_MUSIC, maxMusic, 0);
+                }
+            } catch (Exception ignored) {}
+
             activePlayer = new MediaPlayer();
             activePlayer.setAudioAttributes(new AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
@@ -277,7 +300,7 @@ public class CallReceiver extends BroadcastReceiver {
                     .build());
             activePlayer.setDataSource(audioUrl);
             activePlayer.setOnPreparedListener(mp -> {
-                Log.d(TAG, "MediaPlayer hazır, ses çalınıyor...");
+                Log.d(TAG, "MediaPlayer hazır, ses çalınıyor: " + audioUrl);
                 mp.start();
             });
             activePlayer.setOnCompletionListener(mp -> stopAudio());
