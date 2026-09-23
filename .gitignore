@@ -59,8 +59,12 @@ android/local.properties
 *.ogg
 *.flac
 *.m4a
+ses_veriseti/
+ses_veriseti/**
 voice_dataset/
 voice_dataset/**
+arama_kayitlari/
+arama_kayitlari/**
 call_recordings/
 call_recordings/**
 legacy/
@@ -85,8 +89,11 @@ legacy/tenra_lora.gguf
 .env.*
 *.secret
 credentials.json
+voice_twin/config.json
+inst_user_settings.tmp
 
-# IDE & OS
+# Logs & Temp
+*.log
 *.tmp
 .idea/
 .vscode/
@@ -97,3 +104,4 @@ credentials.json
 Thumbs.db
 desktop.ini
 $null
+

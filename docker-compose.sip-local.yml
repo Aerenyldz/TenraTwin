@@ -1,0 +1,19 @@
+# TenraTwin yerel SIP lab — Asterisk (Windows Docker uyumlu)
+# Dahili 100 = Tenra sip_gateway | 101 = MicroSIP
+#
+# Başlat: docker compose -f docker-compose.sip-local.yml up -d
+# Log:    docker compose -f docker-compose.sip-local.yml logs -f
+
+services:
+  asterisk:
+    image: andrius/asterisk:latest
+    container_name: tenra-asterisk
+    ports:
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      - "10000-10100:10000-10100/udp"
+    volumes:
+      - ./sip_local/pjsip.conf:/etc/asterisk/pjsip.conf:ro
+      - ./sip_local/extensions.conf:/etc/asterisk/extensions.conf:ro
+      - ./sip_local/rtp.conf:/etc/asterisk/rtp.conf:ro
+    restart: unless-stopped

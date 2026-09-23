@@ -1,11 +1,11 @@
-import os
+﻿import os
 import sys
 import shutil
 import subprocess
 import glob
 
 APPLIO_DIR = "C:\\Applio"
-DATASET_SRC = os.path.abspath("voice_dataset/training_ready")
+DATASET_SRC = os.path.abspath("ses_veriseti/training_ready")
 MODEL_NAME = "ahmet_eren"
 
 def find_python():

@@ -1,4 +1,4 @@
-"""
+﻿"""
 TENRA Voice Twin - Ses Kayıt Aracı
 Mikrofondan 10-15 saniyelik temiz, net ve enerjik ses kaydı alır.
 Ses klonlama modeli için referans ses (ahmet_gunduz_ref.wav) oluşturur.
@@ -12,7 +12,7 @@ import numpy as np
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "voice_dataset")
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "ses_veriseti")
 TARGET_WAV = os.path.join(OUTPUT_DIR, "ahmet_gunduz_ref.wav")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Phone, History, Settings, Download, X } from 'lucide-react';
+import { Phone, History, Settings } from 'lucide-react';
 import { StatusWidget } from './components/StatusWidget';
 import { LiveCallBridge } from './components/LiveCallBridge';
 import { CallHistory } from './components/CallHistory';
 import { SettingsModal } from './components/SettingsModal';
-import { pingServer, getServerUrl } from './api';
+import { pingServer, getServerUrl, ensureLocalServerUrl } from './api';
+import { onGsmHandled, syncAutoAnswerDelayToNative } from './nativePrefs';
 import './App.css';
 
 type Tab = 'call' | 'history' | 'settings';
@@ -13,37 +14,25 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('call');
   const [serverOnline, setServerOnline] = useState<boolean | null>(null);
   const [latency, setLatency] = useState<number | null>(null);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showInstallBanner, setShowInstallBanner] = useState<boolean>(() => {
-    if (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) {
-      return false;
-    }
-    return true;
-  });
+  const [gsmBanner, setGsmBanner] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setShowInstallBanner(true);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    ensureLocalServerUrl();
+    void syncAutoAnswerDelayToNative(Number(localStorage.getItem('tenra_auto_delay')) || 5);
   }, []);
 
-  const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
-      if (choice.outcome === 'accepted') {
-        setDeferredPrompt(null);
-        setShowInstallBanner(false);
-      }
-    } else {
-      alert("📲 Uygulamayı Telefona Yüklemek İçin:\n\n1. Chrome tarayıcısında sağ üstteki 3 noktaya (⋮) dokunun.\n2. 'Uygulamayı Yükle' veya 'Ana Ekrana Ekle' seçeneğine basın.");
-    }
-  };
+  useEffect(() => {
+    return onGsmHandled((detail) => {
+      const label = detail.callerName || detail.callerNumber || 'Arayan';
+      setGsmBanner(
+        detail.nativeAudioOwned
+          ? `${label} — native karşılama aktif (ses CallReceiver'da)`
+          : `${label} aradı`
+      );
+      setActiveTab('history');
+      setTimeout(() => setGsmBanner(null), 8000);
+    });
+  }, []);
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -53,14 +42,14 @@ export default function App() {
     };
 
     checkConnection();
-    const interval = setInterval(checkConnection, 15000);
+    const interval = setInterval(checkConnection, 5000);
     return () => clearInterval(interval);
   }, []);
 
 
   return (
     <div className="app-viewport">
-      {/* Top Application Bar */}
+      {/* Top Application Bar — ayarlar yalnızca alt nav'da */}
       <header className="app-header">
         <div className="header-brand">
           <div className="brand-logo-glow">
@@ -84,38 +73,19 @@ export default function App() {
               {serverOnline === true ? (
                 <>Sunucu Aktif {latency !== null && `(${latency}ms)`}</>
               ) : serverOnline === false ? (
-                'Çevrimdışı'
+                '🔴 Sunucu Çevrimdışı'
               ) : (
                 'Bağlanıyor...'
               )}
             </span>
           </div>
-
-          <button
-            className={`btn-settings-header ${activeTab === 'settings' ? 'active' : ''}`}
-            onClick={() => setActiveTab(activeTab === 'settings' ? 'call' : 'settings')}
-            title="Ayarlar"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
         </div>
       </header>
 
-      {/* Install App Banner for Mobile PWA */}
-      {showInstallBanner && (
-        <div className="install-banner">
-          <div className="install-info">
-            <Download className="w-4 h-4 text-cyan-400 mr-2" />
-            <span>TenraTwin'i tam ekran uygulama olarak yükleyin</span>
-          </div>
-          <div className="install-actions">
-            <button className="btn-install-pwa" onClick={handleInstallClick}>
-              Yükle
-            </button>
-            <button className="btn-close-banner" onClick={() => setShowInstallBanner(false)}>
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
+      {gsmBanner && (
+        <div className="gsm-native-banner">
+          <Phone className="w-4 h-4 mr-2" />
+          <span>{gsmBanner}</span>
         </div>
       )}
 

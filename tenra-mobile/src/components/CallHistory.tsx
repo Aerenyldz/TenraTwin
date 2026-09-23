@@ -6,6 +6,7 @@ import type { CallRecord } from '../types';
 export const CallHistory: React.FC = () => {
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'onemli' | 'normal' | 'oylesine'>('all');
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [playingId, setPlayingId] = useState<number | null>(null);
@@ -16,8 +17,12 @@ export const CallHistory: React.FC = () => {
     try {
       const data = await fetchCalls();
       setCalls(data);
+      setLoadError(null);
     } catch (err) {
       console.error('Calls could not be loaded:', err);
+      setLoadError(
+        `Sunucuya ulaşılamadı (${getServerUrl()}). PC’de Tenra sunucusunun açık olduğundan emin ol.`
+      );
     } finally {
       setLoading(false);
     }
@@ -25,6 +30,18 @@ export const CallHistory: React.FC = () => {
 
   useEffect(() => {
     loadCalls();
+    // Walkthrough: geçmişi otomatik yenile (URL/sunucu gecikmesi için)
+    const interval = setInterval(loadCalls, 8000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadCalls();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('tenra-gsm-handled', loadCalls);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('tenra-gsm-handled', loadCalls);
+    };
   }, []);
 
   const handleDelete = async (id: number) => {
@@ -131,7 +148,16 @@ export const CallHistory: React.FC = () => {
       </div>
 
       {/* Calls List */}
-      {filteredCalls.length === 0 ? (
+      {loadError && (
+        <div className="empty-history-card" style={{ borderColor: '#c45c26', marginBottom: '1rem' }}>
+          <h3>Geçmiş yüklenemedi</h3>
+          <p>{loadError}</p>
+          <button type="button" className="btn-refresh" onClick={() => void loadCalls()} style={{ marginTop: '0.75rem' }}>
+            Tekrar dene
+          </button>
+        </div>
+      )}
+      {filteredCalls.length === 0 && !loadError ? (
         <div className="empty-history-card">
           <PhoneIncoming className="w-12 h-12 text-slate-500 mb-2" />
           <h3>Henüz Kayıt Yok</h3>
@@ -141,7 +167,7 @@ export const CallHistory: React.FC = () => {
               : 'Seçili filtreye uygun arama kaydı bulunamadı.'}
           </p>
         </div>
-      ) : (
+      ) : filteredCalls.length === 0 ? null : (
         <div className="calls-list">
           {filteredCalls.map((call) => {
             const isExpanded = expandedId === call.id;

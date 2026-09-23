@@ -1,4 +1,4 @@
-"""
+﻿"""
 TENRA Voice Twin - 25-30 Saniyelik Profesyonel Ses Kayıt Aracı
 ElevenLabs için 3 adet uzun (25-30 saniye) temiz ses kaydı alır.
 """
@@ -16,7 +16,7 @@ import numpy as np
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "voice_dataset", "elevenlabs_ready")
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "ses_veriseti", "elevenlabs_ready")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 PROMPTS = [

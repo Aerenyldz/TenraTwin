@@ -1,12 +1,13 @@
 {
   "voice_provider": "fish_audio",
-  "fish_api_key": "sk-fish-0zv1z6VYMaLoe-S0b-sAG21MeBHh8G77-UvnsqLWLzw",
-  "fish_reference_id": "f5b2d05ab5a1402ebabe0b4703bd09b7",
+  "fish_api_key": "",
+  "fish_reference_id": "",
   "fish_emotion_prompt": "[fluent, friendly, warm tone]",
   "fish_speed": 1.08,
   "elevenlabs_api_key": "",
   "elevenlabs_voice_id": "",
   "local_voice_fallback": "tr-TR-AhmetNeural",
   "pitch_offset": "-15Hz",
-  "rate_offset": "-3%"
+  "rate_offset": "-3%",
+  "_comment_voice_provider": "fish_audio = su anki hizli yol | rvc = tamamen yerel Applio modeli (ahmet_eren_v2.pth hazir)"
 }

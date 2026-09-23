@@ -1,4 +1,4 @@
-"""
+﻿"""
 TENRA Voice Twin - Advanced Audio Preprocessor & DSP Pipeline
 93 adet uzun, gece kaydedilmiş ve anlaşılması zor ses dosyasını
 gürültü filtresi, bant geçiren filtre, dinamik sıkıştırma ve VAD ile temizler.
@@ -20,7 +20,7 @@ import imageio_ffmpeg
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
-DATASET_DIR = os.path.join(PROJECT_ROOT, "voice_dataset")
+DATASET_DIR = os.path.join(PROJECT_ROOT, "ses_veriseti")
 PROCESSED_DIR = os.path.join(DATASET_DIR, "processed")
 
 FFMPEG_EXE = imageio_ffmpeg.get_ffmpeg_exe()

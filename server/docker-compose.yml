@@ -8,14 +8,14 @@ services:
     container_name: tenra-voice-server
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8008:8008"
     environment:
       - OLLAMA_URL=http://host.docker.internal:11434
       - CALL_MODEL=hermes3:8b
       - PYTHONUNBUFFERED=1
     volumes:
       - ../call_logs.db:/app/call_logs.db
-      - ../call_recordings:/app/call_recordings
+      - ../arama_kayitlari:/app/arama_kayitlari
       - ../voice_twin/cache:/app/voice_twin/cache
       - C:/Applio:/app/Applio:ro
     extra_hosts:

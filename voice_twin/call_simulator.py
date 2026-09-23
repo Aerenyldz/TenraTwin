@@ -1,4 +1,4 @@
-"""
+﻿"""
 TENRA Voice Twin - Interactive Call Simulator
 Gelen çağrı senaryosunu test eder:
 Mikrofon (STT Faster-Whisper) veya Klavye -> LLM (Ollama) -> TTS (Fish Audio Genç Ahmet) -> Hoparlör
@@ -103,7 +103,7 @@ async def run_call_simulation(caller_name: str = "Yunus Berk"):
     print("\n⏳ Görüşme analiz ediliyor ve Ahmet için özet not hazırlanıyor...")
     summary_data = await summarize_and_save_call(caller_name, history)
 
-    # 4. Görüşmeyi call_recordings/ altına arşivle
+    # 4. Görüşmeyi arama_kayitlari/ altına arşivle
     saved_record = save_call_recording(
         caller_name=caller_name,
         transcript=summary_data.get("transcript", ""),

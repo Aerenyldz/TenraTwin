@@ -24,7 +24,7 @@ def init_db():
                 timestamp TEXT NOT NULL,
                 transcript TEXT NOT NULL,
                 summary TEXT NOT NULL,
-                urgency TEXT DEFAULT 'normal', -- 'acil', 'normal', 'onemsiz'
+                urgency TEXT DEFAULT 'normal', -- 'onemli', 'normal', 'oylesine'
                 audio_file TEXT DEFAULT '',
                 is_read INTEGER DEFAULT 0
             )
@@ -66,6 +66,68 @@ def update_call_audio(call_id: int, audio_file: str):
         cursor = conn.cursor()
         cursor.execute("UPDATE call_logs SET audio_file = ? WHERE id = ?", (audio_file, call_id))
         conn.commit()
+
+
+def update_call_record(
+    call_id: int,
+    *,
+    transcript: str | None = None,
+    summary: str | None = None,
+    urgency: str | None = None,
+    audio_file: str | None = None,
+    caller_name: str | None = None,
+) -> bool:
+    """Mevcut arama satırını günceller (GSM end için — yeni satır açmaz)."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM call_logs WHERE id = ?", (call_id,))
+        if not cursor.fetchone():
+            return False
+        fields = []
+        values = []
+        if transcript is not None:
+            fields.append("transcript = ?")
+            values.append(transcript)
+        if summary is not None:
+            fields.append("summary = ?")
+            values.append(summary)
+        if urgency is not None:
+            fields.append("urgency = ?")
+            values.append(urgency)
+        if audio_file is not None:
+            fields.append("audio_file = ?")
+            values.append(audio_file)
+        if caller_name is not None:
+            fields.append("caller_name = ?")
+            values.append(caller_name)
+        if not fields:
+            return True
+        values.append(call_id)
+        cursor.execute(f"UPDATE call_logs SET {', '.join(fields)} WHERE id = ?", values)
+        conn.commit()
+        return True
+
+def append_call_transcript(call_id: int, extra_transcript: str, summary: str = None):
+    """Mevcut çağrı dökümüne yeni tur ekler; isteğe bağlı özet günceller."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT transcript FROM call_logs WHERE id = ?", (call_id,))
+        row = cursor.fetchone()
+        if not row:
+            return False
+        new_transcript = (row[0] or "").rstrip() + "\n" + extra_transcript.strip()
+        if summary:
+            cursor.execute(
+                "UPDATE call_logs SET transcript = ?, summary = ? WHERE id = ?",
+                (new_transcript, summary, call_id)
+            )
+        else:
+            cursor.execute(
+                "UPDATE call_logs SET transcript = ? WHERE id = ?",
+                (new_transcript, call_id)
+            )
+        conn.commit()
+        return True
 
 def mark_call_read(call_id: int):
     """Çağrıyı okundu olarak işaretler."""

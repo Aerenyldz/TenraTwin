@@ -4,12 +4,14 @@ import { fetchStatus, updateStatus } from '../api';
 const STATUS_DETAILS: Record<string, string> = {
   Okulda: 'Ahmet şu an derste, önemli bir şey varsa not alıyorum.',
   Sporda: 'Ahmet sporda, antrenman bitince arar. Not bırakayım mı?',
-  Toplantıda: 'Toplantıdayım, acil değilse mesaj bırakın.',
+  Toplantıda: 'Ahmet toplantıda, acil değilse mesaj bırakın.',
   Müsait: 'Ahmet müsait, telefonu kendisine aktarıyorum.',
   Yemekte: 'Ahmet şu an yemekte, bitince döner. Not bırakmak ister misin?',
   Uykuda: 'Ahmet uyuyor, acil değilse uyandığında döner sana.',
   Trafikte: 'Ahmet trafikte, varınca arar. Bir şey ileteyim mi?',
   Dışarıda: 'Ahmet dışarıda, eve dönünce döner sana. Not bırakayım mı?',
+  Ders: 'Ahmet ders çalışıyor, mola verince döner. Not alsın mı?',
+  // Eski kayıt uyumu
   'Ders Çalışıyorum': 'Ahmet ders çalışıyor, mola verince döner. Not alsın mı?'
 };
 
@@ -22,7 +24,7 @@ const OPTIONS = [
   { id: 'Uykuda', icon: '😴', label: 'Uykuda' },
   { id: 'Trafikte', icon: '🚗', label: 'Trafikte' },
   { id: 'Dışarıda', icon: '🏖️', label: 'Dışarıda' },
-  { id: 'Ders Çalışıyorum', icon: '📚', label: 'Ders' }
+  { id: 'Ders', icon: '📚', label: 'Ders' }
 ];
 
 const CUSTOM_ID = '__custom__';
@@ -39,13 +41,25 @@ export const StatusWidget: React.FC = () => {
     fetchStatus()
       .then((data) => {
         if (data.status) {
-          setCurrentStatus(data.status);
-          const detail = data.status_detail || STATUS_DETAILS[data.status] || '';
+          // Eski "Ders Çalışıyorum" → "Ders"
+          const normalized =
+            data.status === 'Ders Çalışıyorum' ? 'Ders' : data.status;
+          setCurrentStatus(normalized);
+          const detail =
+            data.status_detail ||
+            STATUS_DETAILS[normalized] ||
+            STATUS_DETAILS[data.status] ||
+            '';
           setCurrentDetail(detail);
-          // Eğer DB'deki mod preset listede yoksa özel not modunda aç
-          if (!OPTIONS.find(o => o.id === data.status)) {
+          if (!OPTIONS.find((o) => o.id === normalized) && normalized !== 'Özel') {
             setCurrentStatus(CUSTOM_ID);
             setCustomNote(detail);
+          } else if (normalized === 'Özel') {
+            setCurrentStatus(CUSTOM_ID);
+            setCustomNote(detail);
+          } else if (data.status === 'Ders Çalışıyorum') {
+            // DB'yi sessizce düzelt
+            void updateStatus('Ders', STATUS_DETAILS.Ders);
           }
         }
       })
@@ -126,17 +140,17 @@ export const StatusWidget: React.FC = () => {
               onClick={handleCustomSave}
               disabled={saving || !customNote.trim()}
             >
-              {saving ? '⏳ Kaydediliyor…' : saved ? '✅ Kaydedildi' : '💾 Kaydet'}
+              {saving ? 'Kaydediliyor…' : saved ? 'Kaydedildi' : 'Kaydet'}
             </button>
           </div>
           <div className="custom-note-hint">
-            🤖 Yapay zeka bu notu analiz edip arayana uygun şekilde özetleyecek.
+            Yapay zeka bu notu analiz edip arayana uygun şekilde özetler.
           </div>
         </div>
       )}
 
       <div className="status-current-hint">
-        ⚡ Aktif Cevap: "{currentDetail}"
+        Aktif cevap: &ldquo;{currentDetail}&rdquo;
       </div>
     </section>
   );

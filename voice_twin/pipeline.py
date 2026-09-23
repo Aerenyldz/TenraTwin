@@ -45,30 +45,36 @@ KURALLAR:
 _whisper_model = None
 
 def get_whisper_model():
+    """Whisper her zaman CPU int8 — RTX 2060 VRAM'i Ollama + RVC için kalsın."""
     global _whisper_model
     if _whisper_model is None:
-        print("[STT] Whisper modeli yükleniyor (ilk kez ~30 saniye)...")
-        try:
-            _whisper_model = WhisperModel("small", device="cuda", compute_type="float16")
-        except Exception:
-            _whisper_model = WhisperModel("small", device="cpu", compute_type="int8")
-        print("[STT] Whisper modeli hazır.")
+        print("[STT] Whisper CPU int8 yükleniyor (VRAM kullanmaz, ilk kez ~20-40 sn)...")
+        from faster_whisper import WhisperModel
+        # Kullanıcı kararı: 6 GB VRAM sadece Hermes + RVC
+        _whisper_model = WhisperModel("small", device="cpu", compute_type="int8")
+        print("[STT] Whisper hazır (device=cpu, compute_type=int8).")
     return _whisper_model
 
 
-def transcribe_wav(wav_path: str, language: str = "tr") -> str:
-    """WAV dosyasını metne dönüştürür."""
+def transcribe_wav(wav_path: str, language: str = "tr", *, soft_vad: bool = False) -> str:
+    """WAV dosyasını metne dönüştürür.
+
+    soft_vad=True: GSM hoparlör sızıntısı gibi zayıf sesler için VAD kapalı.
+    """
     try:
         model = get_whisper_model()
-        segments, info = model.transcribe(
-            wav_path,
-            language=language,
-            beam_size=5,
-            vad_filter=True,           # Sessizliği filtrele
-            vad_parameters={
-                "min_silence_duration_ms": 500
-            }
-        )
+        kwargs = {
+            "language": language,
+            "beam_size": 5,
+        }
+        if soft_vad:
+            # Hoparlörden gelen uzak sesi kesmesin
+            kwargs["vad_filter"] = False
+        else:
+            kwargs["vad_filter"] = True
+            kwargs["vad_parameters"] = {"min_silence_duration_ms": 500}
+
+        segments, info = model.transcribe(wav_path, **kwargs)
         text = " ".join(seg.text.strip() for seg in segments).strip()
         return text
     except Exception as e:

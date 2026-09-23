@@ -11,6 +11,43 @@ from voice_twin.call_logs_db import add_call
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
 MODEL_NAME = os.getenv("CALL_MODEL", "hermes3:8b")
 
+# Durum etiketi → selamlamada üçüncü şahıs konuşma (asla "çalışıyorum" deme)
+STATUS_SPOKEN = {
+    "Müsait": "müsait",
+    "Yemekte": "yemekte",
+    "Okulda": "derste",
+    "Sporda": "sporda",
+    "Toplantıda": "toplantıda",
+    "Uykuda": "uyuyor",
+    "Trafikte": "trafikte",
+    "Dışarıda": "dışarıda",
+    "Ders": "ders çalışıyor",
+    "Ders Çalışıyorum": "ders çalışıyor",  # eski id uyumu
+}
+
+
+def spoken_status_phrase(status: str) -> str:
+    """Selamlama için güvenli üçüncü şahıs durum ifadesi."""
+    if not status:
+        return "biraz meşgul"
+    if status == "Özel":
+        return "biraz meşgul"
+    return STATUS_SPOKEN.get(status, status.lower().replace("çalışıyorum", "çalışıyor"))
+
+
+def build_call_greeting(caller_name: str | None, status: str) -> str:
+    """Tek tip asistan selamı — her yerde aynı kimlik."""
+    who = (caller_name or "").strip()
+    phrase = spoken_status_phrase(status)
+    if status == "Müsait":
+        body = "Ahmet şu an müsait, sizi dinliyorum."
+    else:
+        body = f"Ahmet şu an {phrase}. Önemli bir şey mi vardı, not almamı ister misin?"
+    if who and who not in ("Arayan", "Bilinmeyen", "Bilinmeyen Numara"):
+        return f"Selam {who}! Ben Ahmet'in sesli asistanıyım. {body}"
+    return f"Selam! Ben Ahmet'in sesli asistanıyım. {body}"
+
+
 def build_system_prompt() -> str:
     try:
         from voice_twin.call_logs_db import get_assistant_status
@@ -21,47 +58,52 @@ def build_system_prompt() -> str:
         status_mode = "Okulda"
         status_info = "Ahmet şu an derste/okulda."
 
-    # Özel not modu için AI'a akıllı analiz talimatı
     if status_mode == "Özel":
-        status_block = f"""AHMET'İN DURUMU (ÖZEL NOT — AKıLLI ANALİZ):
+        status_block = f"""AHMET'İN DURUMU (ÖZEL NOT — AKILLI ANALİZ):
 Ahmet sana şu serbest notu bırakmış: "{status_info}"
 Bu notu OLDUĞU GİBİ okuma! Bunun yerine:
-- Notu anlayıp arayana doğal, kısa ve sıcak bir dille özetle.
+- Notu anlayıp arayana doğal, kısa ve sıcak bir dille üçüncü şahısla özetle (Ahmet ...).
 - Örnek: Not="Şu an veznedeyim, çıkışında müsaitim" → "Ahmet şu an biraz meşgul kanka, birazdan müsait olacak. Not bırakmak ister misin?"
-- Örnek: Not="Spora gideceğim 1 saat sonra dönerim" → "Ahmet spora gidecek, yaklaşık 1 saat sonra döner. Bir şey iletmemi ister misin?"
-- Örnek: Not="Sınavdayım, çok acil değilse aramayın" → "Ahmet şu an sınavda kanka, acil değilse çıkınca döner sana."
-- Notun içeriğine göre aciliyet durumunu da kendin ayarla (acilse hemen ulaşmaya çalış, değilse not al)."""
+- Asla "ben veznedeyim / ders çalışıyorum" deme; sen Ahmet değilsin."""
     else:
+        spoken = spoken_status_phrase(status_mode)
         status_block = f"""AHMET'İN DURUMU:
-{status_info}"""
+Mod: {status_mode} → konuşurken söyle: "Ahmet şu an {spoken}."
+Ek bilgi (istersen kısalt): {status_info}
+ASLA birinci şahıs kullanma ("çalışıyorum", "yemekteyim", "toplantıdayım" YASAK)."""
 
-    return f"""Sen Ahmet Eren Yıldız'ın yapay zeka ses ikizisin.
-Ahmet telefona cevap veremediği için telefonu sen açtın. Karşıdaki kişi arayan bir arkadaş, tanıdık veya aile bireyidir.
+    return f"""Sen Ahmet Eren Yıldız'ın TELEFON SEKRETERİ / sesli asistanısın.
+Ahmet telefona bakamadığı için sen açtın. Ses Ahmet'inkine benzer olabilir ama SEN AHMET DEĞİLSİN.
 
-KİŞİLİK VE KONUŞMA KURALLARI (HAYATİ ÖNEMDE):
-1. ChatGPT Voice gibi son derece samimi, sıcak, doğal ve yaşayan bir genç gibi konuş.
-2. ASLA üçüncü şahıs gözlemci veya masal anlatıcısı gibi konuşma ("Ahmet'i arayarak selamını gönderdin" gibi cümleler KESİNLİKLE YASAKTIR). Doğrudan telefonun ucundaki kişiye "sen", Ahmet'e "Ahmet" de.
-3. KAFANDAN AHMET'İN GELECEK PLANLARINI VEYA PROGRAMINI ASLA UYDURMA!
-   - Arayan kişi "Yarın akşam işi var mı? Hafta sonu müsait mi? Saat 8'de ne yapıyor?" gibi bir soru sorarsa:
-     "Yarın için planını tam bilmiyorum kanka, ama hemen not aldım. Ahmet dersten çıkınca sana yazar veya arar, kendisi söylesin." de.
-4. ASLA "anlaşma yapıldı/sağlandı/yapılmış", "hoşçakalın efendim", "müşteri" gibi saçma çeviri kalıpları KULLANMA.
-5. Arayan selam söylerse mutlaka "Aleykümselam kanka" diyerek selamını aynen ileteceğini belirt.
-6. Arayan "öylesine aradım", "naptın diye baktım" derse "Tamamdır rahat ol, selamını iletirim, çıkınca sana döner" de.
-7. Yanıtın MAKSİMUM 1 VEYA 2 KISA CÜMLE olsun. Asla uzun nutuk çekme.
-8. Arayan veda ederse ("hadi görüşürüz", "kolay gelsin" vb.) "Görüşürüz kanka, kendine iyi bak!" de ve kapat.
+KİMLİK (HAYATİ — İKİ ROLÜ KARIŞTIRMA):
+1. Kendini tanıt: "Ahmet'in asistanı / sesli asistanı".
+2. Ahmet'ten HER ZAMAN üçüncü şahısla bahset: "Ahmet şu an…", "Ahmet çıkınca…", "ona not bırakayım".
+3. ASLA Ahmet gibi konuşma: "ben ders çalışıyorum", "ben yemekteyim", "akşam çalışalım" (sen çalışmayacaksın).
+4. Arayan Ahmet'e soru soruyorsa ("ne çalışıyorsun?") → Ahmet adına uydurma; "Tam bilmiyorum kanka, not aldım, Ahmet çıkınca söylesin / arasın" de.
 
-ÖRNEK DİYALOGLAR (BU TARZDA DOĞAL VE KISA YANIT VER):
-- Arayan: "Yok öylesine aramıştım bir de yarın akşam işi var mı söyler misin?"
-  Sen: "Aleykümselam kanka! Selamını söylerim. Yarın akşam için planını tam bilmiyorum ama not aldım, Ahmet dersten çıkınca hemen seni arar!"
+STT / YAZIM HATALARI:
+Arayan metni ses tanımasından gelebilir, bozuk yazılabilir ("calısıoyrsun", "berab", "aksam").
+Anlamı tahmin et, düzeltip yanıtla. Anlamadıysan tek kısa soru sor; asla alakasız konu uydurma (halı saha, maç vb. yoksa EKLEME).
 
-- Arayan: "Kanka akşam halı saha maçı var mı diye soracaktım."
-  Sen: "Süper, hemen not aldım kanka. Ahmet dersten çıkınca maçı konuşmak için sana döner."
+KONUŞMA KURALLARI:
+1. Samimi, kısa, 1–2 cümle. ChatGPT Voice gibi doğal.
+2. Selam ("selam", "asalamünaleyküm") YOKsa "Aleykümselam" deme.
+3. Ahmet'in gelecek planını uydurma; bilmiyorsan not alıp Ahmet'e bırak.
+4. Veda ederse: "Görüşürüz kanka, kendine iyi bak!"
 
-- Arayan: "Çok acil bir durum var, Ahmet'e hemen ulaşmam gerek!"
-  Sen: "Hayırdır ne oldu? Konu çok acilse hemen dersten çıkarmaya çalışayım, bana kısaca söyle."
+ÖRNEKLER:
+- Arayan: "ne konusunu calısıoyrsun aksam calısalım berab"
+  Sen: "Konuyu bilmiyorum kanka, not aldım. Ahmet dersi bitirince seni arasın, akşam çalışmayı konuşursunuz."
+
+- Arayan: "Yarın akşam işi var mı?"
+  Sen: "Yarın için planını tam bilmiyorum ama not aldım, Ahmet çıkınca sana döner."
+
+- Arayan: "Sadece selam vermek istemiştim."
+  Sen: "Tamamdır, selamını iletirim kanka. Kolay gelsin!"
 
 {status_block}
 """
+
 
 async def handle_call_turn(
     caller_message: str,
@@ -74,7 +116,7 @@ async def handle_call_turn(
     messages.extend(dialogue_history)
     messages.append({"role": "user", "content": caller_message})
 
-    async with httpx.AsyncClient(timeout=25.0) as client:
+    async with httpx.AsyncClient(timeout=45.0) as client:
         response = await client.post(
             f"{OLLAMA_URL}/api/chat",
             json={
@@ -82,8 +124,8 @@ async def handle_call_turn(
                 "messages": messages,
                 "stream": False,
                 "options": {
-                    "temperature": 0.4,
-                    "num_predict": 45,
+                    "temperature": 0.35,
+                    "num_predict": 70,
                     "stop": ["\n\n", "Arayan:", "Ahmet:", "Asistan:", "Kullanıcı:"]
                 }
             }
@@ -94,47 +136,45 @@ async def handle_call_turn(
 
     # Ön ekleri temizle
     reply = re.sub(r"^(Asistan|Ahmet):\s*", "", reply).strip('"').strip()
-    return reply or "Aleykümselam kanka, notumu aldım. Ahmet çıkınca hemen arayacak seni!"
+    return reply or "Tamam kanka, notumu aldım. Ahmet çıkınca hemen arayacak seni!"
+
 
 async def summarize_and_save_call(
     caller_name: str,
     dialogue_history: list[dict],
     model: str = MODEL_NAME,
-    **kwargs
+    **kwargs,
 ) -> dict:
-    """Görüşme bitince tüm konuşmayı analiz edip Ahmet için detaylı ve zeki hap özet not çıkarır."""
+    """Görüşme bitince özet + aciliyet; DB'ye yazar."""
     transcript_lines = []
     for d in dialogue_history:
-        role = "Arayan" if d["role"] == "user" else "Asistan"
-        transcript_lines.append(f"{role}: {d['content']}")
+        role = "Arayan" if d.get("role") == "user" else "Asistan"
+        transcript_lines.append(f"{role}: {d.get('content', '')}")
     transcript_text = "\n".join(transcript_lines)
 
-    prompt = f"""Sen Ahmet Eren Yıldız'ın kişisel telefon sekreterisin. Aşağıdaki telefon görüşmesini oku. Ahmet için arayanın ne istediğini, sorduğu soruları ve niyetini TAM olarak anlatan zeki ve detaylı 1 cümlelik özet çıkar.
+    prompt = f"""Sen Ahmet Eren Yıldız'ın kişisel telefon sekreterisin. Aşağıdaki görüşmeyi oku.
+Ahmet için arayanın ne istediğini TAM anlatan 1 cümlelik özet yaz.
 
 KURALLAR:
-1. Asla genel geçer "not bıraktı", "aradı" gibi baştan savma özet yazma!
-2. Arayanın sorduğu soruları (örn: yarın akşam işi var mı), bıraktığı notları ve amacını açıkça belirt.
-   - Örnek: "Oğuz öylesine aramış, selamı var. Ayrıca yarın akşam işin olup olmadığını sordu, dersten çıkınca aramanı bekliyor."
-   - Örnek: "Kerem akşam halı saha maçı için aradı, haber bekliyor."
-   - Örnek: "Merve acil sınav notlarını sormak için aradı, hemen dönmeni istiyor."
+1. "not bıraktı / aradı" gibi genel özet YASAK.
+2. Soruları ve niyeti açık yaz (örn. akşam birlikte çalışmak istedi).
 
-ÖNEM DERECESİ:
-- 'onemli': Acil durum, kaza, hastane, para/banka, acil görüşme, sınav veya hayati iş.
-- 'normal': Bir şey sorma (örn: yarın akşam işi var mı), plan yapma, sıradan iş, randevu, ödev.
-- 'oylesine': Sırf muhabbet, hal hatır, "canım sıkıldı", öylesine aradım (hiçbir soru sormadan).
+ÖNEM:
+- onemli: acil, para, sağlık, sınav
+- normal: plan/soru
+- oylesine: sadece selam/muhabbet
 
-GÖRÜŞME DÖKÜMÜ:
+GÖRÜŞME:
 {transcript_text}
 
-JSON formatında yanıt ver:
-{{"caller": "{caller_name}", "summary": "...", "urgency": "normal"}}
+JSON: {{"caller": "{caller_name}", "summary": "...", "urgency": "normal"}}
 """
 
     summary_text = f"{caller_name} aradı ve not bıraktı."
     urgency = "normal"
 
     try:
-        async with httpx.AsyncClient(timeout=25.0) as client:
+        async with httpx.AsyncClient(timeout=40.0) as client:
             res = await client.post(
                 f"{OLLAMA_URL}/api/generate",
                 json={
@@ -142,16 +182,11 @@ JSON formatında yanıt ver:
                     "prompt": prompt,
                     "stream": False,
                     "format": "json",
-                    "options": {
-                        "temperature": 0.2,
-                        "num_predict": 300
-                    }
-                }
+                    "options": {"temperature": 0.2, "num_predict": 300},
+                },
             )
             res.raise_for_status()
             resp_str = res.json().get("response", "{}")
-            
-            # Robust JSON extraction
             try:
                 parsed = json.loads(resp_str)
             except Exception:
@@ -161,7 +196,7 @@ JSON formatında yanıt ver:
             if parsed.get("summary"):
                 summary_text = parsed["summary"]
 
-            urgency_raw = parsed.get("urgency", "normal").lower().strip()
+            urgency_raw = str(parsed.get("urgency", "normal")).lower().strip()
             if "onemli" in urgency_raw or "acil" in urgency_raw:
                 urgency = "onemli"
             elif "oylesine" in urgency_raw or "onemsiz" in urgency_raw:
@@ -171,24 +206,21 @@ JSON formatında yanıt ver:
     except Exception as e:
         print(f"Özetleme hatası: {e}")
 
-    # Veritabanına kaydet
     call_id = add_call(
         caller_name=caller_name,
         transcript=transcript_text,
         summary=summary_text,
-        urgency=urgency
+        urgency=urgency,
     )
 
-    # Telegram bildirimi gönder (ses kaydı varsa ekle)
     try:
         from voice_twin.notifier import send_call_notification
-        audio_path = kwargs.get("audio_recording_path", None)
         await send_call_notification(
             caller_name=caller_name,
             summary=summary_text,
             urgency=urgency,
-            audio_path=audio_path,
-            transcript=transcript_text if len(transcript_text) < 800 else None
+            audio_path=kwargs.get("audio_recording_path"),
+            transcript=transcript_text if len(transcript_text) < 800 else None,
         )
     except Exception as e:
         print(f"[Bildirim Uyarı]: {e}")
@@ -198,6 +230,5 @@ JSON formatında yanıt ver:
         "caller": caller_name,
         "summary": summary_text,
         "urgency": urgency,
-        "transcript": transcript_text
+        "transcript": transcript_text,
     }
-

@@ -6,7 +6,9 @@
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding-bottom: 90px; /* space for bottom nav */
+  padding-bottom: calc(90px + env(safe-area-inset-bottom));
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
   position: relative;
 }
 
@@ -16,6 +18,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.25rem;
+  padding-top: max(1rem, env(safe-area-inset-top));
   background: rgba(15, 23, 42, 0.75);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -127,55 +130,6 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* Install App Banner */
-.install-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.65rem 1rem;
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.18), rgba(59, 130, 246, 0.18));
-  border-bottom: 1px solid rgba(6, 182, 212, 0.35);
-  backdrop-filter: blur(10px);
-}
-
-.install-info {
-  display: flex;
-  align-items: center;
-  font-size: 0.78rem;
-  color: #e0f2fe;
-  font-weight: 500;
-}
-
-.install-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-.btn-install-pwa {
-  padding: 0.35rem 0.85rem;
-  border-radius: 9999px;
-  background: var(--accent-cyan);
-  color: #0b0f17;
-  font-size: 0.75rem;
-  font-weight: 700;
-  box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
-  transition: transform 0.15s;
-}
-
-.btn-install-pwa:hover {
-  transform: scale(1.04);
-}
-
-.btn-close-banner {
-  color: var(--text-muted);
-  padding: 0.25rem;
-  border-radius: 4px;
-}
-
-
 /* App Body & Content */
 .app-body {
   flex: 1;
@@ -247,6 +201,89 @@
   font-size: 0.75rem;
   color: #38bdf8;
   border-left: 3px solid var(--accent-cyan);
+}
+
+/* Özel durum notu — koyu tema */
+.custom-note-area {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.custom-note-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 4.5rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  background: rgba(15, 23, 42, 0.9);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.custom-note-input::placeholder {
+  color: var(--text-dim);
+}
+
+.custom-note-input:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+}
+
+.custom-note-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.char-count {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.save-note-btn {
+  padding: 0.4rem 0.9rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(6, 182, 212, 0.45);
+  background: rgba(6, 182, 212, 0.18);
+  color: #e0f2fe;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.save-note-btn:hover:not(:disabled) {
+  background: rgba(6, 182, 212, 0.3);
+  border-color: var(--accent-cyan);
+}
+
+.save-note-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.save-note-btn.saved {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #a7f3d0;
+}
+
+.custom-note-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
 /* Live Call Bridge Component */
@@ -1219,7 +1256,7 @@
   right: 0;
   max-width: 600px;
   margin: 0 auto;
-  height: 64px;
+  height: calc(64px + env(safe-area-inset-bottom));
   background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -1262,4 +1299,15 @@
 
 .nav-item.active .nav-icon {
   filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.6));
+}
+
+.gsm-native-banner {
+  display: flex;
+  align-items: center;
+  padding: 0.65rem 1.25rem;
+  background: rgba(6, 182, 212, 0.15);
+  border-bottom: 1px solid rgba(6, 182, 212, 0.3);
+  color: #67e8f9;
+  font-size: 0.8rem;
+  font-weight: 600;
 }

@@ -1,4 +1,4 @@
-import os
+﻿import os
 import glob
 import soundfile as sf
 import numpy as np
@@ -37,11 +37,11 @@ def calculate_quality(data, sr):
     return rms, zcr
 
 def prepare_dataset():
-    output_dir = os.path.abspath("voice_dataset/training_ready")
+    output_dir = os.path.abspath("ses_veriseti/training_ready")
     os.makedirs(output_dir, exist_ok=True)
     
-    clean_src = os.path.abspath("voice_dataset/elevenlabs_ready")
-    processed_src = os.path.abspath("voice_dataset/processed")
+    clean_src = os.path.abspath("ses_veriseti/elevenlabs_ready")
+    processed_src = os.path.abspath("ses_veriseti/processed")
     
     count = 0
     total_duration = 0.0
